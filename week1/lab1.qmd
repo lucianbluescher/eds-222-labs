@@ -115,9 +115,9 @@ penguins |>
 
 ### Bar plots
 
-Bar plots are effective for visualizing counts and proportions of one or more categories.
+#Bar plots are effective for visualizing counts and proportions of one or more categories.
 
-This bar plot visualizes the counts of each species.
+#This bar plot visualizes the counts of each species.
 
 ggplot(penguins, aes(species)) +
   geom_bar()
@@ -248,16 +248,55 @@ Find a dataset containing multiple categorical and continuous variables. You'll 
 4.  Scatterplot
 
 ```{r}
-energy <- read_csv('energy-use-per-person.csv')
+library(janitor)
+
+energy <- read_csv('energy-use-per-person.csv') |> 
+  clean_names()
+
 head(energy)
+colnames(energy)
+
 
 ```
 
 ```{r}
-energy %>% 
-  head(10) |> 
-  ggplot(aes(`Primary energy consumption per capita (kWh/person)`)) +
-  geom_histogram()
+# Sort by Energy consumption per capita
+energy_sorted <-  
+  arrange(energy, primary_energy_consumption_per_capita_k_wh_person)
+```
+
+```{r}
+energy_sorted %>% 
+  tail(5) |> 
+  ggplot(aes(y = primary_energy_consumption_per_capita_k_wh_person, x = entity)) +
+  geom_jitter()
+  
+
+```
+
+```{r}
+
+landfilllmopdata <- clean_names(landfilllmopdata) #|> na.omit(landfilllmopdata)
+colnames(landfilllmopdata)
+```
+
+```{r}
+
+landfilllmopdata |> 
+  filter(ownership_type %in% c("Public", "Private")) |> 
+  ggplot(aes(current_landfill_area_acres, percent_methane, color = ownership_type)) +
+  geom_point() +
+  geom_smooth(method = lm) +
+  scale_x_continuous(limits = c(0, 500)) +
+  scale_y_continuous(limits = c(30, 60)) +
+  scale_color_manual(values = c("Public" = "Red", "Private" = "Blue")) +
+   labs(
+    title = "Methane % vs. Landfill Area by Ownership",
+    x = "Current Landfill Area (acres)",
+    y = "Percent Methane",
+    color = "Ownership"
+  )
+
 ```
 
 ## Finished?
