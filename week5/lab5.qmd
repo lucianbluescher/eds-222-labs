@@ -1,0 +1,159 @@
+---
+title: "Mathematical inference in R"
+format: html
+---
+
+# Environment setup
+```{r}
+library(tidyverse)
+theme_set(theme_classic(14))
+set.seed(123)
+```
+
+# Read and Visualize sample data
+```{r}
+restoration <- read_csv("week5/eelgrass.csv",
+                        show_col_types = FALSE)
+ggplot(restoration, aes(treatment, fill = success_fct)) +
+  geom_bar() +
+  scale_fill_manual(values = c("firebrick", "cornflowerblue")) +
+  labs(x = "Restoration method",
+       y = "Sites",
+       fill = "Outcome") +
+  theme(legend.position = "inside",
+        legend.position.inside = c(1, 1),
+        legend.justification = c(1, 1))
+```
+
+# Hypothesis Test
+
+## 1. Identify the statistic
+Q1: What is the appropriate statistic for this question?
+
+Difference in Proportions p2hat - p1hat
+
+## 2.  State your null and alternative hypotheses
+*Q2: What are your null and alternative hypotheses?*
+
+H0: There will be no difference in outcomes between our two treatments Garden staples and Popsicle Sticks
+
+HA: THe Popsicle stick treatment will produce more successes than the garden staple
+
+## 3. Calculate the sample statistic
+*Q3: How would you calculate the statistic for the sample?*
+
+p1hat - p2hat gives us our difference in proportions
+
+```{r}
+success_props <- restoration %>% 
+  group_by(treatment) %>% 
+  summarize(prop_success = mean(success))
+
+diff_props <- success_props$prop_success[2] - success_props$prop_success[1]
+
+diff_props
+```
+
+## 4. Estimate the null distribution
+*Q4: What's the standard error of the sample's statistic?*
+
+```{r}
+# p_hat is the POOLED proportion, i.e. the overall proportion of success
+p_hat <- sum(restoration$success) / nrow(restoration)
+
+# n's are the number of observations in each treatment
+# n1: number of garden staple observations
+# n2: number of popsicle stick observations
+n1 <- sum(restoration$treatment == "Garden staple")
+n2 <- sum(restoration$treatment == "Popsicle stick")
+
+se_p_hat <- sqrt(p_hat * (1 - p_hat) * (1 / n1 + 1 / n2))
+```
+ This PDF should be a normal variable with mean equal to 0 and standard deviation equal to the standard error of Phat
+.
+```{r}
+null_dist <- tibble(
+  diff_prop = seq(-0.4, 0.4, length.out = 1000),
+  density = dnorm(diff_prop, mean = 0, sd = se_p_hat)
+)
+ 
+ggplot(null_dist, aes(diff_prop, density)) +
+  geom_line(color = "cornflowerblue", linewidth = 2) +
+  geom_vline(xintercept = diff_props, color = "firebrick", linewidth = 2)
+```
+
+## 5. Calculate the P-value
+*Q5: Fill in the blanks to calculate the p-value*
+
+```{r}
+p_val <- pnorm(diff_props, mean = 0, sd = se_p_hat, lower.tail = FALSE )
+p_val
+```
+## 6. Compare p-value to critical threshold
+*Q6: How does your p-value compare to a critical threshold alpha = 0.05? How would you interpret that?*
+
+Our p-value is .08 vs .05 alpha, meaning we fail to reject the null hypothesis because .08 of our results will be more extreme than that of our observed test statistic
+
+# Confidence Interval
+
+## 1. Identify Statistic
+*Q7: Fill in the blanks below to calculate the standard error of the statistic*
+
+Difference in proportions
+
+## 2. Calculate the standard error
+*Q8: Fill in the blanks below to calculate the standard error of the statistic*
+
+```{r}
+# Calculate the proportions of the two treatments
+# Let treatment 1 be "Garden staple"
+p_hat1 <- mean(restoration$success[restoration$treatment == "Garden staple"])
+# Let treatment 2 be "Popsicle stick"
+p_hat2 <- mean(restoration$success[restoration$treatment == "Popsicle stick"])
+
+# n1 and n2 remain the same from before
+
+# Calculate standard error
+se_diff_props <- sqrt(p_hat1 * (1 - p_hat1) / n1 + p_hat2 * (1 - p_hat2) / n2)
+se_diff_props
+```
+PDF should be a normal variable with mean equal to the observed statistic in the sample and standard deviation equal to the standard error.
+```{r}
+sampling_dist <- tibble(
+  diff_prop = seq(-0.2, 0.5, length.out = 1000),
+  density = dnorm(diff_prop, mean = diff_props, sd = se_diff_props)
+)
+ 
+ggplot(sampling_dist, aes(diff_prop, density)) +
+  geom_line(color = "cornflowerblue", linewidth = 2) +
+  geom_vline(xintercept = diff_props, color = "firebrick", linewidth = 2)
+```
+
+## 3. Construct the confidence interval
+*Q9: Fill in the blanks to use qnorm() in constructing the confidence interval.*
+```{r}
+diff_props_ci <- qnorm(c(0.025, 0.975), mean = diff_props, sd = se_diff_props)
+diff_props_ci
+```
+
+*Q10: How would you interpret this confidence interval*
+
+We can be 95% confident that the population difference in proportions falls within our confidence interval of -0.06 and 0.34
+
+# Comparing mathematical and randomization approaches
+
+*Q11:What are permutation tests and mathematical models both trying to estimate for hypothesis tests?*
+
+The sampling distribution of the statistic assuming the null hypothesis is true.
+
+*Q12: What are bootstrapping and mathematical models both trying to estimate for confidence intervals?*
+
+The sampling distribution of the statistic assuming the difference is real.
+
+*Q13: What area under the curve is relevant to hypothesis tests? What R function calculates it for a mathematical model?*
+
+The area of the null distribution more extreme than the observed value. pnorm()
+
+*Q14: What area under the curve is relevant to confidence intervals? What R function calculates it for a mathematical model?*
+
+The middle 95% of the area under the sampling distribution. qnorm()
