@@ -1,0 +1,65 @@
+---
+title: "Week 8 Lab: California Wildfire Occurence"
+format: html
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{r}
+library(tidyverse)
+library(terra)
+library(tidyterra)
+theme_set(theme_classic(12))
+set.seed(123)
+```
+
+```{r}
+# # In R, you can fit a poisson model like this:
+# poisson_model <- glm(count_outcome ~ predictor,
+#                      data = my_data,
+#                      family = poisson(link = "log"))
+# 
+# # You can fit a logistic model like this
+# logistic_model <- glm(binary_outcome ~ predictor,
+#                       data = my_data,
+#                       family = binomial(link = "logit"))
+```
+What Changes?
+1. Response family
+ - changes from binomial to poisson (family =)
+2. Link function
+- logit to log (link = )
+3. Response changes from a binary variable to a count variable
+4. Predictor stays the same
+
+```{r}
+# A wildfire shapefile
+wildfire <- vect("~/Desktop/MEDS/EDS-222/eds-222-labs/week8/wildfires/wildfires.shp")
+
+# A vapor pressure deficit (VPD) raster
+vpd_raster <- rast("~/Desktop/MEDS/EDS-222/eds-222-labs/week8/wildfires/vpd.tiff")
+
+#A table of annual vapor pressure deficit and wildfire data
+vpd_fire_table <- read_csv("~/Desktop/MEDS/EDS-222/eds-222-labs/week8/wildfires/wildfires.csv")
+```
+
+```{r}
+# Figure 1: A scatter plot showing the relationship between vapor pressure deficit and wildfire occurence.
+
+  ggplot(vpd_fire_table, aes(x = mean_vpd_kpa, y = n_fires, color = fire_year)) +
+  geom_jitter()
+
+```
+
+```{r}
+plot(vpd_raster$`1980`)
+plot(vpd_raster$`2000`)
+plot(vpd_raster$`2020`)
+```
+
+```{r}
+plot(wildfire[wildfire$fire_year == 1980, ])
+plot(wildfire[wildfire$fire_year == 2000, ])
+plot(wildfire[wildfire$fire_year == 2020, ])
+```
+
