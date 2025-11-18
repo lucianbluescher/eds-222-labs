@@ -63,3 +63,95 @@ plot(wildfire[wildfire$fire_year == 2000, ])
 plot(wildfire[wildfire$fire_year == 2020, ])
 ```
 
+# Fit Model
+
+```{r}
+# Fit a poisson model to see how n_fires responds to mean_vpd_kpa.
+
+poisson_model <- glm(n_fires ~ mean_vpd_kpa, 
+                     data = vpd_fire_table, 
+                     family = poisson(link = "log"))
+
+summary(poisson_model)
+
+confint(poisson_model)
+
+```
+
+# Make Predictions
+
+```{r}
+#| label: predict-fires
+
+# Generate predictions and a CI for the number of fires in the range of VPD values in the dataset.
+# p = percent prediction of a number of fires ocuring in a range of VPD values
+
+# A grid of predictors(s) to generate predicitons
+new_vpd_data <- expand_grid(mean_vpd_kpa = seq(min(vpd_fire_table$mean_vpd_kpa, na.rm = TRUE),
+                                            max(vpd_fire_table$mean_vpd_kpa, na.rm = TRUE),
+                    length.out = 100))
+
+# Generate predictions
+link_predictions <- predict(poisson_model,
+                     newdata = pred_grid,
+                     type = "link",
+                     se.fit = TRUE)
+
+
+fire_predictions <- new_vpd_data |> 
+  mutate(log_lambda = link_predictions$fit,
+         log_lambda_se = link_predictions$se.fit,
+         log_lambda_lwr = qnorm(c(0.025), mean = log_lambda, sd = log_lambda_se),
+         log_lambda_upr = qnorm(c(0.975), mean = log_lambda, sd = log_lambda_se),
+         lambda = exp(log_lambda),
+         lambda_lwr = exp(log_lambda_lwr),
+         lambda_upr = exp(log_lambda_upr))
+         
+
+
+# Plot
+ggplot() +
+  # Raw points
+  geom_point(data = vpd_fire_table,
+             aes(x = mean_vpd_kpa, y = n_fires),
+             alpha = 0.5, size = 2) +
+  # 95% CI Ribbon
+  geom_ribbon(data = fire_predictions,
+              aes(x = mean_vpd_kpa, ymin = lambda_lwr, ymax = lambda_upr),
+              alpha = 0.3, fill = "blue") +
+  geom_line(data = fire_predictions,
+              aes(x = mean_vpd_kpa, y = lambda),
+              color = "blue", linewidth = 1) +
+  labs(x = "Mean VPD (kPa",
+       y = "Number of Large Fires",
+       title = "Predicted Number of Large Wildfires vs. VPS") +
+  theme_classic()
+```
+
+```{r}
+# 1. Create a new model using lm()
+linear_model = lm(formula = n_fires ~ mean_vpd_kpa,
+               data = vpd_fire_table)
+
+# 2. Compare summaries 
+summary(poisson_model)
+summary(linear_model)
+
+# Extract p-values for comparison
+poisson_pval <- summary(poisson_model)$coefficients["mean_vpd_kpa", 4]
+linear_pval <- summary(linear_model)$coefficients["mean_vpd_kpa", 4]
+
+# 3. Use predictions and components of the linear model to answer the following questions
+
+linear_predictions <- new_vpd_data |> 
+  mutate(mu = predict(linear_model, newdata = new_vpd_data),
+         mu_se = predict(linear_model, newdata = new_vpd_data, se.fit = TRUE)$se.fit,
+         mu_lower = qnorm(0.025, mean = mu, sd = mu_se),
+         mu_upper = qnorm(0.975, mean = mu, sd = mu_se))
+
+
+#What is the estimate for SD in your linear model?
+print(summary(linear_model)$coefficients[])
+
+```
+
